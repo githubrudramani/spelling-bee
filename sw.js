@@ -1,6 +1,6 @@
 // Keeps the app working offline. Bump VERSION whenever the files change.
-const VERSION = 'sbee-v2';
-const FILES = ['./', 'index.html', 'style.css', 'app.js', 'words.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const VERSION = 'sbee-v3';
+const FILES = ['./', 'index.html', 'style.css', 'app.js', 'words.js', 'sentences.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

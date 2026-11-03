@@ -209,3 +209,12 @@ button { font-family: inherit; color: inherit; border: 0; background: none; curs
 .bee-btn.wiggle svg { animation: wiggle .9s ease-in-out; }
 @keyframes wiggle { 15% { transform: translateX(-10px) rotate(-12deg); } 30% { transform: translateX(10px) rotate(10deg); } 45% { transform: translate(-6px,-10px) rotate(-8deg); } 60% { transform: translate(6px,-4px) rotate(6deg); } 80% { transform: rotate(-3deg); } }
 @media (max-width: 700px) { .sound-toggle { font-size: 13px; padding: 5px 10px; } }
+
+/* ---------- funny sentences ---------- */
+.ex { font-style: italic; color: #4A4A55; }
+.ex mark { background: #FFE58A; color: var(--ink); font-style: normal; font-weight: 600; padding: 0 4px; border-radius: 6px; }
+.ex .blank { display: inline-block; font-style: normal; font-weight: 700; letter-spacing: 2px; color: var(--ink2); background: var(--soft); border-bottom: 3px dashed var(--c); padding: 0 6px; border-radius: 6px; }
+.reveal.ex { font-size: 19px; }
+.face .ex { font-size: 21px; line-height: 1.4; margin-top: 16px; max-width: 92%; }
+.witem small.ex { margin-top: 5px; font-size: 14px; }
+.feedback .meaning.ex { margin-top: 10px; font-size: 18px; }

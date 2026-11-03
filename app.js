@@ -26,6 +26,10 @@ function norm(s) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
           .toLowerCase().replace(/[’']/g, "'").replace(/\s+/g, ' ').trim();
 }
+const sentenceOf = w => (typeof SENTENCES !== 'undefined' && SENTENCES[w]) || '';
+const wordRe = w => new RegExp(mainSpelling(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+const blankSentence = (w) => esc(sentenceOf(w)).replace(wordRe(w), '<span class="blank">?????</span>');
+const markSentence = (w) => esc(sentenceOf(w)).replace(wordRe(w), m => `<mark>${m}</mark>`);
 const isRight = (typed, w) => spellings(w).some(s => norm(s) === norm(typed));
 
 /* ---------------- saved state ---------------- */
@@ -313,9 +317,10 @@ SCREENS.bee = () => {
       <button class="chip" data-act="sayWord">🔁 Again</button>
       <button class="chip" data-act="saySlow">🐢 Slowly</button>
       <button class="chip" data-act="showMeaning">📖 Meaning</button>
-      <button class="chip" data-act="saySentence">🗣️ Say meaning</button>
+      <button class="chip" data-act="saySentence">💬 Sentence</button>
     </div>
-    <div class="reveal" id="meaning">${esc(x.mean)}</div>
+    <div class="reveal" id="meaning">📖 ${esc(x.mean)}</div>
+    <div class="reveal ex" id="sent">💬 ${blankSentence(x.w)}</div>
     <div class="answer">
       <input id="ans" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="Type it here" enterkeyhint="done">
       <button class="go" data-act="check">Check ✓</button>
@@ -372,7 +377,7 @@ SCREENS.flash = () => {
       <div class="face front"><span class="num">#${i + 1}</span><span class="stars-mini">${starHtml(stars(w))}</span>
         <div class="w">${esc(w)}</div><div class="say">🔊 ${esc(say)}</div><div class="hint">Tap the card to flip</div></div>
       <div class="face rear"><span class="num">#${i + 1}</span>
-        <div class="w" style="font-size:40px">${esc(w)}</div><div class="m">${esc(mean)}</div><div class="hint">Tap to flip back</div></div>
+        <div class="w" style="font-size:40px">${esc(w)}</div><div class="m">${esc(mean)}</div><div class="ex">💬 ${markSentence(w)}</div><div class="hint">Tap to flip back</div></div>
     </div>
   </div>
   <div class="flash-ctrl">
@@ -380,9 +385,10 @@ SCREENS.flash = () => {
     <button class="round" data-act="shuffleCard" aria-label="Random card">🔀</button>
     <button class="round say-btn" data-act="sayCard" aria-label="Hear it">🔊</button>
     <button class="round" data-act="spellCard" aria-label="Hear it spelled">🔤</button>
+    <button class="round" data-act="sayCardSentence" aria-label="Hear a funny sentence">💬</button>
     <button class="round" data-act="next" aria-label="Next">›</button>
   </div>
-  <p style="text-align:center;color:var(--muted);margin-top:14px;font-size:16px">🔊 hear the word · 🔤 hear it spelled letter by letter · swipe or use the arrows</p>
+  <p style="text-align:center;color:var(--muted);margin-top:14px;font-size:16px">🔊 hear the word · 🔤 hear it spelled · 💬 hear a funny sentence · swipe or use the arrows</p>
   </div>`;
 };
 AFTER.flash = () => {
@@ -404,7 +410,7 @@ SCREENS.list = () => {
   if (f === 'mastered') ws = ws.filter(x => mastered(x[0]));
   if (q) ws = ws.filter(x => norm(x[0]).includes(norm(q)) || norm(x[2]).includes(norm(q)));
   const items = ws.map(([w, say, mean]) => `<button class="witem" data-act="sayThis" data-w="${esc(w)}">
-      <div class="wi"><b>${esc(w)}</b><span class="p">🔊 ${esc(say)}</span><small>${esc(mean)}</small></div>
+      <div class="wi"><b>${esc(w)}</b><span class="p">🔊 ${esc(say)}</span><small>${esc(mean)}</small><small class="ex">💬 ${markSentence(w)}</small></div>
       <div class="st">${starHtml(stars(w))}</div></button>`).join('');
   const fb = (k, label) => `<button class="chip ${f === k ? 'on' : ''}" data-act="filter" data-f="${k}">${label}</button>`;
   return `<div style="${themeVars(li)}">${topbar(LEVELS[li].name + ' Words', 'Tap a word to hear it', 'level')}
@@ -424,7 +430,7 @@ AFTER.list = () => {
 SCREENS.tricky = () => {
   const ws = S.tricky.map(w => byWord[w]).filter(Boolean);
   const items = ws.map(x => `<button class="witem" style="${themeVars(x.li)}" data-act="sayThis" data-w="${esc(x.w)}">
-      <div class="wi"><b>${esc(x.w)}</b><span class="p">🔊 ${esc(x.say)}</span><small>${esc(x.mean)}</small></div>
+      <div class="wi"><b>${esc(x.w)}</b><span class="p">🔊 ${esc(x.say)}</span><small>${esc(x.mean)}</small><small class="ex">💬 ${markSentence(x.w)}</small></div>
       <div class="st">${starHtml(stars(x.w))}</div></button>`).join('');
   return `<div style="--c:var(--bad);--soft:var(--bad-soft);--ink2:#9b1c22">${topbar('Tricky Words', 'Words you missed. Spell one right to clear it!', 'home')}
   ${ws.length ? `<div style="text-align:center;margin-bottom:18px"><button class="big-btn" data-act="startTricky">🎤 Practice tricky words</button></div><div class="wlist">${items}</div>`
@@ -452,7 +458,12 @@ const ACTS = {
   again() { startGame(view.li, view.pool, view.backTo); },
   sayWord() { speak(mainSpelling(view.words[view.i]), 0.85, document.getElementById('spk')); focusAns(); },
   saySlow() { speak(mainSpelling(view.words[view.i]), 0.45, document.getElementById('spk')); focusAns(); },
-  saySentence() { speak(sentenceFor(byWord[view.words[view.i]]), 0.85, document.getElementById('spk')); focusAns(); },
+  saySentence() {
+    const w = view.words[view.i], s = sentenceOf(w);
+    document.getElementById('sent').classList.add('show');
+    speak(s ? mainSpelling(w) + '. ' + s : sentenceFor(byWord[w]), 0.85, document.getElementById('spk'));
+    focusAns();
+  },
   showMeaning() { document.getElementById('meaning').classList.add('show'); view.usedMeaning = true; focusAns(); },
   check() {
     if (view.answered) return;
@@ -473,6 +484,7 @@ const ACTS = {
         <div class="correct">${esc(x.w)}</div><div class="stars3">${starHtml(S.stars[w])}</div>
         ${S.stars[w] === 3 && before < 3 ? '<div class="meaning"><b>Word mastered!</b> 🏅</div>' : ''}
         <div class="meaning">${esc(x.mean)}</div>
+        <div class="meaning ex">💬 ${markSentence(w)}</div>
         <div class="next"><button class="big-btn" style="--c:var(--good)" data-act="next">Next word ›</button></div>`;
       confetti(40);
       sfx('correct');
@@ -486,6 +498,7 @@ const ACTS = {
         <div class="yours">You typed: <s>${esc(typed)}</s></div>
         <div class="correct diff">${diffHtml(typed, mainSpelling(x.w))}</div>
         <div class="meaning">${esc(x.say)} · ${esc(x.mean)}</div>
+        <div class="meaning ex">💬 ${markSentence(w)}</div>
         <div class="next"><button class="big-btn" style="--c:var(--bad)" data-act="next">Next word ›</button></div>`;
       document.getElementById('play').classList.add('shake');
       sfx('wrong');
@@ -512,8 +525,9 @@ const ACTS = {
   shuffleCard() { sfx('swipe'); view.i = Math.floor(Math.random() * LEVELS[view.li].words.length); render(); },
   flip() { sfx('flip'); document.getElementById('flip').classList.toggle('turned'); },
   sayCard() { speak(mainSpelling(LEVELS[view.li].words[view.i][0]), 0.85); },
+  sayCardSentence() { const w = LEVELS[view.li].words[view.i][0]; speak(sentenceOf(w) || mainSpelling(w), 0.9); },
   spellCard() { const w = mainSpelling(LEVELS[view.li].words[view.i][0]); speak(w + '. ' + w.split('').filter(c => c !== ' ').join(', ') + '. ' + w, 0.7); },
-  sayThis(el) { speak(mainSpelling(el.dataset.w), 0.85); },
+  sayThis(el) { const w = el.dataset.w, s = sentenceOf(w); speak(mainSpelling(w) + (s ? '. ' + s : ''), 0.85); },
   filter(el) { view.f = el.dataset.f; render(); },
   buzz(el) { sfx('buzz'); el.classList.remove('wiggle'); void el.offsetWidth; el.classList.add('wiggle'); },
   toggleSound() {

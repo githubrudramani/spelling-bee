@@ -5,7 +5,7 @@ A practice app for the **2026–2027 School Spelling Bee Study List** (One Bee, 
 **Open it:** https://githubrudramani.github.io/spelling-bee/
 
 ## What's inside
-- **Spelling Bee mode** – Buzzy says a word out loud, you type it. Get it right to earn a star (3 stars = mastered).
+- **Spelling Bee mode** – Buzzy says a word out loud, you type it. Ask for the meaning or a funny sentence, just like at a real bee. Get it right to earn a star (3 stars = mastered).
 - **Flashcards** – tap to flip, hear the word, or hear it spelled letter by letter.
 - **Word List** – every word with its pronunciation, meaning and your stars.
 - **Tricky Words** – words you miss are saved here until you spell them right.
@@ -25,6 +25,7 @@ Progress is saved on that device only.
 | `index.html` | The page |
 | `app.js` | How the app works |
 | `words.js` | The 450 words, pronunciations and meanings |
+| `sentences.js` | A funny example sentence for every word |
 | `style.css` | Colors and layout |
 | `sw.js`, `manifest.json`, `icon-*.png` | Offline support and the home-screen icon |
 
