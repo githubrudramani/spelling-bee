@@ -1,5 +1,5 @@
 // Keeps the app working offline. Bump VERSION whenever the files change.
-const VERSION = 'sbee-v1';
+const VERSION = 'sbee-v2';
 const FILES = ['./', 'index.html', 'style.css', 'app.js', 'words.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

@@ -96,6 +96,75 @@ function speak(text, rate = 0.85, el) {
   speechSynthesis.speak(u);
 }
 
+/* ---------------- sound effects (made in code, no audio files) ---------------- */
+let actx = null;
+function ac() {
+  if (!actx) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; actx = new C(); }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+const soundOn = () => S.sound !== false;
+function tone(freq, start, dur, { type = 'sine', vol = 0.18, to = null, attack = 0.01 } = {}) {
+  const a = ac(); if (!a) return;
+  const t = a.currentTime + start;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t);
+  if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + attack);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(a.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function noise(start, dur, { vol = 0.12, from = 800, to = 3000 } = {}) {
+  const a = ac(); if (!a) return;
+  const t = a.currentTime + start;
+  const buf = a.createBuffer(1, Math.ceil(a.sampleRate * dur), a.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
+  f.frequency.setValueAtTime(from, t); f.frequency.exponentialRampToValueAtTime(to, t + dur);
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f).connect(g).connect(a.destination);
+  src.start(t); src.stop(t + dur);
+}
+const SFX = {
+  tap()     { tone(520, 0, 0.07, { to: 820, vol: 0.10 }); },
+  correct() { [659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.28, { type: 'triangle', vol: 0.2 })); },
+  star()    { [1568, 2093, 2637].forEach((f, i) => tone(f, 0.32 + i * 0.06, 0.18, { vol: 0.09 })); },
+  mastered(){ [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.5 + i * 0.08, 0.3, { type: 'triangle', vol: 0.16 })); },
+  wrong()   { tone(330, 0, 0.18, { type: 'triangle', to: 260, vol: 0.18 }); tone(262, 0.17, 0.32, { type: 'triangle', to: 180, vol: 0.18 }); },
+  flip()    { noise(0, 0.22, { vol: 0.10, from: 600, to: 2600 }); },
+  swipe()   { noise(0, 0.16, { vol: 0.08, from: 2400, to: 900 }); },
+  badge()   { [1047, 1319, 1568, 2093].forEach((f, i) => { tone(f, i * 0.07, 0.4, { vol: 0.12 }); tone(f * 2, i * 0.07, 0.2, { vol: 0.04 }); }); },
+  fanfare() {
+    const n = [[523, 0, .16], [659, .16, .16], [784, .32, .16], [1047, .5, .5], [784, .5, .5], [659, .5, .5]];
+    n.forEach(([f, s, d]) => tone(f, s, d, { type: 'square', vol: 0.07, attack: 0.02 }));
+    n.forEach(([f, s, d]) => tone(f, s, d, { type: 'triangle', vol: 0.12, attack: 0.02 }));
+  },
+  cheer()   { [523, 659, 784].forEach((f, i) => tone(f, i * 0.12, 0.35, { type: 'triangle', vol: 0.15 })); },
+  buzz()    {
+    const a = ac(); if (!a) return;
+    const t = a.currentTime, o = a.createOscillator(), lfo = a.createOscillator(), lg = a.createGain(), g = a.createGain();
+    o.type = 'sawtooth'; o.frequency.value = 190;
+    lfo.frequency.value = 22; lg.gain.value = 18; lfo.connect(lg).connect(o.frequency);
+    const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.08, t + 0.08);
+    g.gain.setValueAtTime(0.08, t + 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    o.frequency.setValueAtTime(190, t); o.frequency.linearRampToValueAtTime(240, t + 0.45); o.frequency.linearRampToValueAtTime(170, t + 0.9);
+    o.connect(f).connect(g).connect(a.destination);
+    o.start(t); lfo.start(t); o.stop(t + 0.95); lfo.stop(t + 0.95);
+  },
+};
+function sfx(name) { if (soundOn() && SFX[name]) { try { SFX[name](); } catch (e) {} } }
+
+let laterT = null;
+function sayLater(text, rate, ms) { clearTimeout(laterT); laterT = setTimeout(() => speak(text, rate), ms); }
+function cancelLater() { clearTimeout(laterT); laterT = null; }
+
 /* ---------------- ui helpers ---------------- */
 const $app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -129,7 +198,10 @@ function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { co
 function topbar(title, sub, backTo) {
   return `<div class="topbar"><button class="back" data-go="${backTo}" aria-label="Back">‹</button>
     <div><h1>${title}</h1>${sub ? `<div class="sub">${sub}</div>` : ''}</div><div class="spacer"></div>
-    <span class="pill">⭐ ${totalStars()}</span></div>`;
+    ${soundBtn()}<span class="pill">⭐ ${totalStars()}</span></div>`;
+}
+function soundBtn() {
+  return `<button class="pill sound-toggle" data-act="toggleSound" aria-label="Sound effects ${soundOn() ? 'on' : 'off'}">${soundOn() ? '🔔 Sounds on' : '🔕 Sounds off'}</button>`;
 }
 
 const BEE_SVG = `<svg viewBox="0 0 200 200" aria-hidden="true">
@@ -149,6 +221,7 @@ const BEE_SVG = `<svg viewBox="0 0 200 200" aria-hidden="true">
 /* ---------------- screens ---------------- */
 let view = { name: 'home' };
 function go(name, extra = {}) {
+  cancelLater();
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   view = Object.assign({ name }, extra);
   render();
@@ -185,7 +258,7 @@ SCREENS.home = () => {
       <div class="count"><span>${s.mastered} / ${s.total} mastered</span><span>${pct}%</span></div></button>`;
   }).join('');
   const nb = earnedBadges().length;
-  return `<div class="hero">${BEE_SVG}<div><h1>Hi, <span>${esc(S.name)}</span>!</h1><p>Pick a level and let's get buzzing.</p></div></div>
+  return `<div class="hero"><button class="bee-btn" data-act="buzz" aria-label="Buzzy the bee">${BEE_SVG}</button><div><h1>Hi, <span>${esc(S.name)}</span>!</h1><p>Pick a level and let's get buzzing.</p></div><div class="spacer"></div>${soundBtn()}</div>
   <div class="stats">
     <div class="stat"><div class="big">⭐ ${totalStars()}</div><div class="lbl">stars earned</div></div>
     <div class="stat"><div class="big">🏅 ${totalMastered()}</div><div class="lbl">words mastered</div></div>
@@ -286,8 +359,8 @@ SCREENS.result = () => {
 };
 AFTER.result = () => {
   const ok = view.results.filter(r => r.ok).length;
-  if (ok === view.results.length) confetti(140); else if (ok >= view.results.length * 0.7) confetti(60);
-  speak(ok === view.results.length ? 'Perfect score! You are a spelling champion!' : 'Great practice, ' + S.name + '!', 0.95);
+  if (ok === view.results.length) { confetti(140); sfx('fanfare'); } else { if (ok >= view.results.length * 0.7) confetti(60); sfx('cheer'); }
+  sayLater(ok === view.results.length ? 'Perfect score! You are a spelling champion!' : 'Great practice, ' + S.name + '!', 0.95, 1100);
 };
 
 /* ----- flashcards ----- */
@@ -371,7 +444,7 @@ const ACTS = {
     const v = document.getElementById('nameIn').value.trim();
     if (!v) { toast('Type your name first!'); return; }
     S.name = v; save(); go('home');
-    setTimeout(() => speak('Hi ' + v + '! Let’s get buzzing!', 0.95), 300);
+    sfx('buzz'); sayLater('Hi ' + v + '! Let’s get buzzing!', 0.95, 900);
   },
   rename() { go('welcome'); },
   startBee(el) { const li = +el.dataset.li; startGame(li, LEVELS[li].words.map(x => x[0]), 'level'); },
@@ -402,7 +475,10 @@ const ACTS = {
         <div class="meaning">${esc(x.mean)}</div>
         <div class="next"><button class="big-btn" style="--c:var(--good)" data-act="next">Next word ›</button></div>`;
       confetti(40);
-      speak(CHEERS_OK[Math.floor(Math.random() * CHEERS_OK.length)], 1);
+      sfx('correct');
+      if (S.stars[w] > before) sfx('star');
+      if (S.stars[w] === 3 && before < 3) sfx('mastered');
+      sayLater(CHEERS_OK[Math.floor(Math.random() * CHEERS_OK.length)], 1, S.stars[w] === 3 && before < 3 ? 1100 : 650);
     } else {
       if (!S.tricky.includes(w)) S.tricky.push(w);
       fb.className = 'feedback no show';
@@ -412,17 +488,19 @@ const ACTS = {
         <div class="meaning">${esc(x.say)} · ${esc(x.mean)}</div>
         <div class="next"><button class="big-btn" style="--c:var(--bad)" data-act="next">Next word ›</button></div>`;
       document.getElementById('play').classList.add('shake');
-      speak(mainSpelling(x.w) + '. ' + mainSpelling(x.w).split('').filter(c => c !== ' ').join(', '), 0.8);
+      sfx('wrong');
+      sayLater(mainSpelling(x.w) + '. ' + mainSpelling(x.w).split('').filter(c => c !== ' ').join(', '), 0.8, 700);
     }
     view.results.push({ w, ok });
     inp.disabled = true;
     save();
     const newly = earnedBadges().filter(id => !(view.badgesAtStart || []).includes(id));
-    if (newly.length) { const b = BADGES.find(b => b.id === newly[newly.length - 1]); toast('New badge: ' + b.ico + ' ' + b.name); view.badgesAtStart = earnedBadges(); }
+    if (newly.length) { const b = BADGES.find(b => b.id === newly[newly.length - 1]); toast('New badge: ' + b.ico + ' ' + b.name); setTimeout(() => sfx('badge'), 900); view.badgesAtStart = earnedBadges(); }
     setTimeout(() => fb.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
   },
   next() {
-    if (view.name === 'flash') { view.i = (view.i + 1) % LEVELS[view.li].words.length; render(); return; }
+    cancelLater();
+    if (view.name === 'flash') { sfx('swipe'); view.i = (view.i + 1) % LEVELS[view.li].words.length; render(); return; }
     if (view.i + 1 >= view.words.length) {
       if (view.results.every(r => r.ok) && view.results.length === SESSION_LEN) { S.perfect++; save(); }
       go('result', { li: view.li, results: view.results, earned: view.earned || 0, backTo: view.backTo, pool: view.pool });
@@ -430,18 +508,27 @@ const ACTS = {
     }
     view.i++; view.answered = false; view.usedMeaning = false; render();
   },
-  prev() { const n = LEVELS[view.li].words.length; view.i = (view.i - 1 + n) % n; render(); },
-  shuffleCard() { view.i = Math.floor(Math.random() * LEVELS[view.li].words.length); render(); },
-  flip() { document.getElementById('flip').classList.toggle('turned'); },
+  prev() { sfx('swipe'); const n = LEVELS[view.li].words.length; view.i = (view.i - 1 + n) % n; render(); },
+  shuffleCard() { sfx('swipe'); view.i = Math.floor(Math.random() * LEVELS[view.li].words.length); render(); },
+  flip() { sfx('flip'); document.getElementById('flip').classList.toggle('turned'); },
   sayCard() { speak(mainSpelling(LEVELS[view.li].words[view.i][0]), 0.85); },
   spellCard() { const w = mainSpelling(LEVELS[view.li].words[view.i][0]); speak(w + '. ' + w.split('').filter(c => c !== ' ').join(', ') + '. ' + w, 0.7); },
   sayThis(el) { speak(mainSpelling(el.dataset.w), 0.85); },
   filter(el) { view.f = el.dataset.f; render(); },
+  buzz(el) { sfx('buzz'); el.classList.remove('wiggle'); void el.offsetWidth; el.classList.add('wiggle'); },
+  toggleSound() {
+    S.sound = !soundOn(); save(); render();
+    if (soundOn()) sfx('correct');
+    toast(soundOn() ? '🔔 Sound effects on' : '🔕 Sound effects off');
+  },
 };
 function focusAns() { const i = document.getElementById('ans'); if (i && !i.disabled) i.focus(); }
 
+const OWN_SOUND = new Set(['check', 'next', 'prev', 'flip', 'shuffleCard', 'buzz', 'toggleSound', 'setname']);
 document.addEventListener('click', e => {
   const a = e.target.closest('[data-act]');
+  const btn = a || e.target.closest('[data-go]');
+  if (btn && !(a && OWN_SOUND.has(a.dataset.act))) sfx('tap');
   if (a && !(a.id === 'flip' && e.target.closest('button') && e.target.closest('button') !== a)) {
     e.preventDefault();
     ACTS[a.dataset.act] && ACTS[a.dataset.act](a);

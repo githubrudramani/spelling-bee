@@ -199,3 +199,13 @@ button { font-family: inherit; color: inherit; border: 0; background: none; curs
   .answer { flex-direction: column; }
   .go { padding: 14px; }
 }
+
+/* ---------- sound toggle & tappable bee ---------- */
+.sound-toggle { font-size: 15px; padding: 6px 12px; }
+.sound-toggle:active { transform: scale(.95); }
+.hero .sound-toggle { align-self: flex-start; }
+.bee-btn { flex: none; border-radius: 50%; }
+.bee-btn svg { display: block; }
+.bee-btn.wiggle svg { animation: wiggle .9s ease-in-out; }
+@keyframes wiggle { 15% { transform: translateX(-10px) rotate(-12deg); } 30% { transform: translateX(10px) rotate(10deg); } 45% { transform: translate(-6px,-10px) rotate(-8deg); } 60% { transform: translate(6px,-4px) rotate(6deg); } 80% { transform: rotate(-3deg); } }
+@media (max-width: 700px) { .sound-toggle { font-size: 13px; padding: 5px 10px; } }
